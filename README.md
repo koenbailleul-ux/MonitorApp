@@ -76,7 +76,7 @@ make run
 ```
 
 ### Install to Applications
-To install MonitorApp into `~/Applications`:
+To install MonitorApp into `/Applications`:
 ```bash
 ./build.sh install
 ```

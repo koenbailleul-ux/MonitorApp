@@ -14,6 +14,14 @@ public enum AppearanceMode: String, CaseIterable, Sendable {
         case .light: return "Light Mode"
         }
     }
+    
+    public var shortName: String {
+        switch self {
+        case .system: return "System"
+        case .dark: return "Dark"
+        case .light: return "Light"
+        }
+    }
 }
 
 public final class AppSettings: ObservableObject {

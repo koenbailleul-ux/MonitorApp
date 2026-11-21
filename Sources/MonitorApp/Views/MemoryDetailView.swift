@@ -23,7 +23,7 @@ public struct MemoryDetailView: View {
                                 value: monitor.memoryStats.usedPercentage,
                                 title: String(format: "%.0f%%", monitor.memoryStats.usedPercentage),
                                 subtitle: "RAM",
-                                tintColor: Color.teal,
+                                tintColor: monitor.memoryStats.pressureStatus.color,
                                 size: 84
                             )
                             

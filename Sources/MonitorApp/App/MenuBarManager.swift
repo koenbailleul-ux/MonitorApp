@@ -240,7 +240,7 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
         self.contextMenu = menu
         
         // 1. Header Item
-        let headerItem = NSMenuItem(title: "MonitorApp 1.0.0", action: nil, keyEquivalent: "")
+        let headerItem = NSMenuItem(title: "MonitorApp 1.1.0", action: nil, keyEquivalent: "")
         headerItem.isEnabled = false
         menu.addItem(headerItem)
         

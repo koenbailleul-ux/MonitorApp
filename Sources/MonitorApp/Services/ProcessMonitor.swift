@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import Darwin
+import ApplicationServices
 
 public final class ProcessMonitor: @unchecked Sendable {
     private struct PreviousProcTime {
@@ -24,6 +25,7 @@ public final class ProcessMonitor: @unchecked Sendable {
             runningAppsMap[app.processIdentifier] = app
         }
         
+        let isAXTrusted = AXIsProcessTrusted()
         var items: [ProcessItem] = []
         items.reserveCapacity(min(count, 512))
         
@@ -36,12 +38,35 @@ public final class ProcessMonitor: @unchecked Sendable {
             let result = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &taskInfo, size)
             guard result == size else { continue }
             
-            // Name & Icon
+            // Name, Icon & Responsiveness
             let name: String
             let icon: NSImage?
+            var isNotResponding = false
+            
+            // Check process BSD state (stopped or zombie)
+            var bsdInfo = proc_bsdinfo()
+            let bsdSize = Int32(MemoryLayout<proc_bsdinfo>.size)
+            if proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &bsdInfo, bsdSize) == bsdSize {
+                // SSTOP = 4, SZOMB = 5
+                if bsdInfo.pbi_status == 4 || bsdInfo.pbi_status == 5 {
+                    isNotResponding = true
+                }
+            }
+            
             if let app = runningAppsMap[pid] {
                 name = app.localizedName ?? "App (\(pid))"
                 icon = app.icon
+                
+                // If GUI app, check accessibility event responsiveness
+                if !isNotResponding && isAXTrusted && app.activationPolicy == .regular {
+                    let axApp = AXUIElementCreateApplication(pid)
+                    AXUIElementSetMessagingTimeout(axApp, 0.1) // 100ms timeout
+                    var role: CFTypeRef?
+                    let axErr = AXUIElementCopyAttributeValue(axApp, kAXRoleAttribute as CFString, &role)
+                    if axErr == .cannotComplete {
+                        isNotResponding = true
+                    }
+                }
             } else {
                 var nameBuf = [CChar](repeating: 0, count: 128)
                 proc_name(pid, &nameBuf, 128)
@@ -65,7 +90,7 @@ public final class ProcessMonitor: @unchecked Sendable {
             prevTimes[pid] = PreviousProcTime(timestamp: now, cpuTime: totalCpuTime)
             
             let residentMem = UInt64(taskInfo.pti_resident_size)
-            items.append(ProcessItem(id: pid, name: name, cpuPercentage: cpuPct, memoryBytes: residentMem, icon: icon))
+            items.append(ProcessItem(id: pid, name: name, cpuPercentage: cpuPct, memoryBytes: residentMem, icon: icon, isNotResponding: isNotResponding))
         }
         
         // Clean up terminated pids
@@ -74,14 +99,22 @@ public final class ProcessMonitor: @unchecked Sendable {
         }
         
         let topCPU = items
-            .filter { $0.cpuPercentage > 0.1 }
-            .sorted { $0.cpuPercentage > $1.cpuPercentage }
-            .prefix(5)
+            .sorted {
+                if $0.isNotResponding != $1.isNotResponding {
+                    return $0.isNotResponding && !$1.isNotResponding
+                }
+                return $0.cpuPercentage > $1.cpuPercentage
+            }
+            .prefix(25)
         
         let topMemory = items
-            .filter { $0.memoryBytes > 5 * 1024 * 1024 } // > 5MB
-            .sorted { $0.memoryBytes > $1.memoryBytes }
-            .prefix(5)
+            .sorted {
+                if $0.isNotResponding != $1.isNotResponding {
+                    return $0.isNotResponding && !$1.isNotResponding
+                }
+                return $0.memoryBytes > $1.memoryBytes
+            }
+            .prefix(25)
         
         return (Array(topCPU), Array(topMemory))
     }

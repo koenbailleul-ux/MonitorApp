@@ -11,6 +11,7 @@ public struct GlassCard<Content: View>: View {
     
     public var body: some View {
         content
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(padding)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)

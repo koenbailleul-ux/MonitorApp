@@ -137,13 +137,25 @@ public final class MenuBarStatusView: NSView {
             tintColor: NSColor.systemBlue
         )
         
+        // Memory Pressure Color: green, yellow or red
+        let memPressureColor: NSColor
+        switch monitor.memoryStats.pressureStatus {
+        case .normal:
+            memPressureColor = NSColor(red: 0.22, green: 0.82, blue: 0.45, alpha: 1.0)
+        case .warning:
+            memPressureColor = NSColor(red: 1.00, green: 0.70, blue: 0.00, alpha: 1.0)
+        case .critical:
+            memPressureColor = NSColor(red: 1.00, green: 0.30, blue: 0.30, alpha: 1.0)
+        }
+        
         // Draw Memory Pill
         drawPill(
             rect: memoryRect,
             iconName: "memorychip",
             text: memText,
             tab: .memory,
-            tintColor: NSColor.systemTeal
+            tintColor: memPressureColor,
+            customTextColor: memPressureColor
         )
         
         // Draw Network Pill
@@ -161,7 +173,8 @@ public final class MenuBarStatusView: NSView {
         iconName: String,
         text: String,
         tab: InspectorTab,
-        tintColor: NSColor
+        tintColor: NSColor,
+        customTextColor: NSColor? = nil
     ) {
         let isHovered = (hoveredSection == tab)
         let isActive = (activeSection == tab)
@@ -191,7 +204,7 @@ public final class MenuBarStatusView: NSView {
         
         // Draw text
         let font = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .semibold)
-        let textColor: NSColor = isActive ? NSColor.labelColor : NSColor.labelColor.withAlphaComponent(0.9)
+        let textColor: NSColor = customTextColor ?? (isActive ? NSColor.labelColor : NSColor.labelColor.withAlphaComponent(0.9))
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: textColor

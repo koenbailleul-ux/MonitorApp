@@ -84,7 +84,7 @@ public struct CPUDetailView: View {
                             SparklineChartView(
                                 data: monitor.cpuStats.history,
                                 lineColor: .blue,
-                                height: 38,
+                                height: 58,
                                 maxValue: 100.0
                             )
                         }

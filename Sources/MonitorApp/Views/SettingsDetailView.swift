@@ -17,7 +17,7 @@ public struct SettingsDetailView: View {
                             .font(.system(size: 12, weight: .bold))
                         
                         // Theme Picker
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 5) {
                             HStack {
                                 Text("App Theme")
                                     .font(.system(size: 11, weight: .medium))
@@ -27,18 +27,35 @@ public struct SettingsDetailView: View {
                                     .foregroundColor(.secondary)
                             }
                             
-                            Picker("Appearance Mode", selection: $settings.appearanceMode) {
+                            HStack(spacing: 3) {
                                 ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                                    Text(mode.displayName).tag(mode)
+                                    Button(action: {
+                                        settings.appearanceMode = mode
+                                    }) {
+                                        Text(mode.shortName)
+                                            .font(.system(size: 10.5, weight: settings.appearanceMode == mode ? .semibold : .regular))
+                                            .foregroundColor(settings.appearanceMode == mode ? .primary : .secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 4)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                                    .fill(settings.appearanceMode == mode ? Color(nsColor: .controlAccentColor).opacity(0.22) : Color.clear)
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .pickerStyle(.segmented)
+                            .padding(2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.primary.opacity(0.06))
+                            )
                         }
                         
                         Divider().opacity(0.15)
                         
                         // Update Frequency
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 5) {
                             HStack {
                                 Text("Update Frequency")
                                     .font(.system(size: 11, weight: .medium))
@@ -48,15 +65,30 @@ public struct SettingsDetailView: View {
                                     .foregroundColor(.secondary)
                             }
                             
-                            Picker("Update Frequency", selection: $settings.refreshInterval) {
+                            HStack(spacing: 3) {
                                 ForEach(refreshIntervals, id: \.self) { interval in
-                                    Text(String(format: "%.1fs", interval)).tag(interval)
+                                    Button(action: {
+                                        settings.refreshInterval = interval
+                                        monitor.updateInterval(interval)
+                                    }) {
+                                        Text(String(format: "%.1fs", interval))
+                                            .font(.system(size: 10.5, weight: settings.refreshInterval == interval ? .semibold : .regular))
+                                            .foregroundColor(settings.refreshInterval == interval ? .primary : .secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 4)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                                    .fill(settings.refreshInterval == interval ? Color(nsColor: .controlAccentColor).opacity(0.22) : Color.clear)
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .pickerStyle(.segmented)
-                            .onChange(of: settings.refreshInterval) { oldValue, newValue in
-                                monitor.updateInterval(newValue)
-                            }
+                            .padding(2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.primary.opacity(0.06))
+                            )
                         }
                         
                         Divider().opacity(0.15)
@@ -141,7 +173,7 @@ public struct SettingsDetailView: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
-                        Text("v1.0.0")
+                        Text("v1.1.0")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
                     }

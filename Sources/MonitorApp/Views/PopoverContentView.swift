@@ -12,13 +12,12 @@ public struct PopoverContentView: View {
             // MARK: - Header Bar & Tab Selector
             VStack(spacing: 8) {
                 // Top Tab Bar
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     TabPillButton(
                         tab: .cpu,
                         selectedTab: $manager.currentTab,
                         title: "CPU",
                         icon: "cpu",
-                        badge: monitor.cpuPercentString,
                         tintColor: .blue
                     )
                     
@@ -27,7 +26,6 @@ public struct PopoverContentView: View {
                         selectedTab: $manager.currentTab,
                         title: "Memory",
                         icon: "memorychip",
-                        badge: monitor.memoryPercentString,
                         tintColor: .teal
                     )
                     
@@ -36,9 +34,18 @@ public struct PopoverContentView: View {
                         selectedTab: $manager.currentTab,
                         title: "Network",
                         icon: "arrow.up.arrow.down",
-                        badge: AppSettings.shared.showNetworkAsPercentage ? monitor.networkPercentString : monitor.networkRateString,
                         tintColor: .cyan
                     )
+                    
+                    TabPillButton(
+                        tab: .processes,
+                        selectedTab: $manager.currentTab,
+                        title: "Processes",
+                        icon: "list.bullet.rectangle",
+                        tintColor: .purple
+                    )
+                    
+                    Spacer()
                     
                     Button(action: {
                         manager.currentTab = .settings
@@ -71,6 +78,8 @@ public struct PopoverContentView: View {
                     MemoryDetailView()
                 case .network:
                     NetworkDetailView()
+                case .processes:
+                    ProcessesDetailView()
                 case .settings:
                     SettingsDetailView()
                 }
@@ -165,7 +174,6 @@ private struct TabPillButton: View {
     @Binding var selectedTab: InspectorTab
     let title: String
     let icon: String
-    let badge: String
     let tintColor: Color
     
     private var isSelected: Bool {
@@ -184,15 +192,8 @@ private struct TabPillButton: View {
                 Text(title)
                     .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                     .foregroundColor(isSelected ? .primary : .secondary)
-                
-                Text(badge)
-                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background(isSelected ? tintColor.opacity(0.2) : Color.primary.opacity(0.06))
-                    .foregroundColor(isSelected ? tintColor : .secondary)
-                    .clipShape(Capsule())
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 5)

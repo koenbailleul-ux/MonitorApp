@@ -26,7 +26,7 @@ case "$1" in
         ;;
     install)
         $0
-        TARGET_DIR="${HOME}/Applications"
+        TARGET_DIR="/Applications"
         mkdir -p "${TARGET_DIR}"
         echo "📦 Installing to ${TARGET_DIR}/${BUNDLE_NAME}..."
         rm -rf "${TARGET_DIR}/${BUNDLE_NAME}"

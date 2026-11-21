@@ -161,13 +161,15 @@ public struct ProcessItem: Identifiable, Sendable {
     public let cpuPercentage: Double
     public let memoryBytes: UInt64
     public let icon: NSImage?
+    public var isNotResponding: Bool
     
-    public init(id: pid_t, name: String, cpuPercentage: Double, memoryBytes: UInt64, icon: NSImage? = nil) {
+    public init(id: pid_t, name: String, cpuPercentage: Double, memoryBytes: UInt64, icon: NSImage? = nil, isNotResponding: Bool = false) {
         self.id = id
         self.name = name
         self.cpuPercentage = cpuPercentage
         self.memoryBytes = memoryBytes
         self.icon = icon
+        self.isNotResponding = isNotResponding
     }
 }
 
@@ -176,6 +178,7 @@ public enum InspectorTab: String, CaseIterable, Identifiable, Sendable {
     case cpu = "CPU"
     case memory = "Memory"
     case network = "Network"
+    case processes = "Processes"
     case settings = "Settings"
     
     public var id: String { rawValue }
@@ -185,6 +188,7 @@ public enum InspectorTab: String, CaseIterable, Identifiable, Sendable {
         case .cpu: return "cpu"
         case .memory: return "memorychip"
         case .network: return "arrow.up.arrow.down"
+        case .processes: return "list.bullet.rectangle"
         case .settings: return "gearshape.fill"
         }
     }

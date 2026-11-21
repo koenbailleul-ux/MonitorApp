@@ -64,6 +64,21 @@ public final class SystemMonitorService: ObservableObject {
         start()
     }
     
+    public func killProcess(pid: pid_t) {
+        if let app = NSRunningApplication(processIdentifier: pid) {
+            if !app.forceTerminate() {
+                kill(pid, SIGKILL)
+            }
+        } else {
+            kill(pid, SIGKILL)
+        }
+        
+        topCPUProcesses.removeAll { $0.id == pid }
+        topMemoryProcesses.removeAll { $0.id == pid }
+        processCounter = 0
+        tick()
+    }
+    
     public func tick() {
         guard !isSampling else { return }
         isSampling = true
