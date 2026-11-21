@@ -131,7 +131,8 @@ public struct MemoryStats: Sendable {
     public var compressedBytes: UInt64 = 0
     public var purgeableBytes: UInt64 = 0
     
-    public var usedPercentage: Double = 0.0
+    public var usedPercentage: Double = 0.0 // (Active + Wired + Compressed) / Total memory
+    public var activePercentage: Double { totalBytes > 0 ? (Double(activeBytes) / Double(totalBytes) * 100.0) : 0.0 }
     public var wiredPercentage: Double = 0.0
     public var history: [Double] = Array(repeating: 0.0, count: 30)
 }

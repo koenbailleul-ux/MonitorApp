@@ -40,9 +40,8 @@ public final class MemoryMonitor: @unchecked Sendable {
         let free = UInt64(vmStat.free_count) * pSize
         let purgeable = UInt64(vmStat.purgeable_count) * pSize
         
-        // App Memory = Active + Inactive - Purgeable
-        let appMem = active >= purgeable ? (active + inactive - purgeable) : (active + inactive)
-        let used = wired + appMem + compressed
+        // Memory used: Active + Wired + Compressed (all used memory excluding inactive cache and free RAM)
+        let used = active + wired + compressed
         let safeUsed = min(totalRAM, used)
         let usedPct = totalRAM > 0 ? (Double(safeUsed) / Double(totalRAM) * 100.0) : 0.0
         let wiredPct = totalRAM > 0 ? (Double(wired) / Double(totalRAM) * 100.0) : 0.0
