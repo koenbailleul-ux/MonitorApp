@@ -90,6 +90,20 @@ public final class MenuBarStatusView: NSView {
             }
             .store(in: &cancellables)
         
+        AppSettings.shared.$cpuColor
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.needsDisplay = true
+            }
+            .store(in: &cancellables)
+        
+        AppSettings.shared.$highContrastGraph
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.needsDisplay = true
+            }
+            .store(in: &cancellables)
+        
         updateLayout()
     }
     
@@ -111,6 +125,11 @@ public final class MenuBarStatusView: NSView {
         )
         addTrackingArea(area)
         self.trackingArea = area
+    }
+    
+    public override func layout() {
+        super.layout()
+        updateLayout()
     }
     
     public func updateLayout() {
@@ -136,9 +155,9 @@ public final class MenuBarStatusView: NSView {
         let memW = calculatePillWidth(for: memStyle, textWidth: memTextWidth)
         let netW = calculatePillWidth(for: netStyle, textWidth: netTextWidth)
         
-        let pillH: CGFloat = 19.0
-        let h = bounds.height > 0 ? bounds.height : 22.0
-        let pillY: CGFloat = max(1.0, (h - pillH) / 2.0)
+        let h = bounds.height > 0 ? bounds.height : NSStatusBar.system.thickness
+        let pillH: CGFloat = h
+        let pillY: CGFloat = 0.0
         let spacing: CGFloat = 3.0
         let leftMargin: CGFloat = 4.0
         
@@ -197,7 +216,7 @@ public final class MenuBarStatusView: NSView {
             iconName: "cpu",
             text: cpuText,
             tab: .cpu,
-            tintColor: NSColor.systemBlue,
+            tintColor: AppSettings.shared.cpuColor.nsColor,
             style: AppSettings.shared.cpuDisplayStyle,
             value: monitor.cpuStats.overallUsage,
             history: monitor.cpuStats.history
@@ -294,7 +313,7 @@ public final class MenuBarStatusView: NSView {
             drawTextOnly(text: text, rect: rect, startX: textStartX, isActive: isActive, customTextColor: customTextColor)
             
         case .history:
-            let graphH: CGFloat = isHovered ? 14.0 : 13.0
+            let graphH: CGFloat = max(14.0, rect.height - 1.0)
             let graphRect = NSRect(x: contentX, y: rect.origin.y + (rect.height - graphH) / 2.0, width: availableWidth, height: graphH)
             drawHistorySparkline(rect: graphRect, history: history, tintColor: tintColor, isHovered: isHovered, tab: tab)
         }
@@ -317,10 +336,18 @@ public final class MenuBarStatusView: NSView {
     }
     
     private func drawProgressBar(rect: NSRect, value: Double, tintColor: NSColor, isHovered: Bool) {
-        // Track
+        let isHighContrast = AppSettings.shared.highContrastGraph
+        
+        // Dark contrast backing track so it never blends into transparent / sky backgrounds
         let trackPath = NSBezierPath(roundedRect: rect, xRadius: 3.0, yRadius: 3.0)
-        NSColor.textColor.withAlphaComponent(0.14).setFill()
+        NSColor(white: 0.06, alpha: isHighContrast ? 0.72 : 0.40).setFill()
         trackPath.fill()
+        
+        if isHighContrast {
+            NSColor.white.withAlphaComponent(0.22).setStroke()
+            trackPath.lineWidth = 0.5
+            trackPath.stroke()
+        }
         
         // Fill
         let clamped = max(0.0, min(100.0, value))
@@ -329,18 +356,23 @@ public final class MenuBarStatusView: NSView {
         let fillRect = NSRect(x: rect.origin.x, y: rect.origin.y, width: fillW, height: rect.height)
         let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 3.0, yRadius: 3.0)
         
-        let color = isHovered ? tintColor : tintColor.withAlphaComponent(0.90)
+        let color = isHovered ? tintColor : tintColor.withAlphaComponent(0.95)
         color.setFill()
         fillPath.fill()
     }
     
     private func drawHistorySparkline(rect: NSRect, history: [Double], tintColor: NSColor, isHovered: Bool, tab: InspectorTab) {
-        // Background container box
-        let boxPath = NSBezierPath(roundedRect: rect, xRadius: 2.5, yRadius: 2.5)
-        NSColor.textColor.withAlphaComponent(0.06).setFill()
+        let isHighContrast = AppSettings.shared.highContrastGraph
+        
+        // Background container box: deep dark backdrop to eliminate wallpaper bleed-through (e.g. blue sky)
+        let boxPath = NSBezierPath(roundedRect: rect, xRadius: 3.0, yRadius: 3.0)
+        let bgAlpha: CGFloat = isHighContrast ? (isHovered ? 0.85 : 0.76) : (isHovered ? 0.60 : 0.45)
+        NSColor(white: 0.06, alpha: bgAlpha).setFill()
         boxPath.fill()
-        NSColor.textColor.withAlphaComponent(0.12).setStroke()
-        boxPath.lineWidth = 0.5
+        
+        let strokeAlpha: CGFloat = isHighContrast ? 0.28 : 0.16
+        NSColor.white.withAlphaComponent(strokeAlpha).setStroke()
+        boxPath.lineWidth = 0.6
         boxPath.stroke()
         
         guard history.count >= 2 else { return }
@@ -352,8 +384,8 @@ public final class MenuBarStatusView: NSView {
             ? max(history.max() ?? 1024.0, 1024.0)
             : 100.0
         
-        let topY = rect.minY + 1.0
-        let bottomY = rect.maxY - 1.0
+        let topY = rect.minY + 1.5
+        let bottomY = rect.maxY - 1.5
         let h = max(1.0, bottomY - topY)
         
         var points: [NSPoint] = []
@@ -363,6 +395,9 @@ public final class MenuBarStatusView: NSView {
             let py = bottomY - (CGFloat(clamped / maxVal) * h)
             points.append(NSPoint(x: px, y: py))
         }
+        
+        NSGraphicsContext.saveGraphicsState()
+        boxPath.addClip()
         
         // Area Gradient Fill under curve
         let fillPath = NSBezierPath()
@@ -376,23 +411,37 @@ public final class MenuBarStatusView: NSView {
         NSGraphicsContext.saveGraphicsState()
         fillPath.addClip()
         let gradient = NSGradient(
-            starting: tintColor.withAlphaComponent(isHovered ? 0.45 : 0.30),
-            ending: tintColor.withAlphaComponent(0.04)
+            starting: tintColor.withAlphaComponent(isHovered ? 0.68 : 0.52),
+            ending: tintColor.withAlphaComponent(0.10)
         )
         gradient?.draw(in: rect, angle: 90.0) // 90 degrees in flipped coordinates is top to bottom
         NSGraphicsContext.restoreGraphicsState()
         
-        // Stroked line along top
+        // Dark contrast halo / shadow underlay behind the stroke line
+        let haloPath = NSBezierPath()
+        haloPath.move(to: points[0])
+        for i in 1..<points.count {
+            haloPath.line(to: points[i])
+        }
+        haloPath.lineWidth = (isHovered ? 1.9 : 1.6) + 1.2
+        haloPath.lineCapStyle = .round
+        haloPath.lineJoinStyle = .round
+        NSColor.black.withAlphaComponent(isHighContrast ? 0.75 : 0.45).setStroke()
+        haloPath.stroke()
+        
+        // Crisp stroked line along top
         let linePath = NSBezierPath()
         linePath.move(to: points[0])
         for i in 1..<points.count {
             linePath.line(to: points[i])
         }
-        linePath.lineWidth = isHovered ? 1.4 : 1.1
+        linePath.lineWidth = isHovered ? 1.9 : 1.6
         linePath.lineCapStyle = .round
         linePath.lineJoinStyle = .round
         tintColor.setStroke()
         linePath.stroke()
+        
+        NSGraphicsContext.restoreGraphicsState()
     }
     
     // MARK: - Coordinate Helper

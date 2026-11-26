@@ -61,7 +61,7 @@ public struct SettingsDetailView: View {
                             MetricStyleRow(
                                 title: "CPU Metric",
                                 icon: "cpu",
-                                tintColor: .blue,
+                                tintColor: settings.cpuColor.swiftUIColor,
                                 selection: $settings.cpuDisplayStyle
                             )
                             MetricStyleRow(
@@ -78,6 +78,52 @@ public struct SettingsDetailView: View {
                             )
                         }
                         .padding(.top, 2)
+                        
+                        Divider().opacity(0.15)
+                        
+                        // CPU Graph Color Picker
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("CPU Graph Color")
+                                    .font(.system(size: 11, weight: .medium))
+                                Spacer()
+                                Text(settings.cpuColor.shortName)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            HStack(spacing: 6) {
+                                ForEach(MenuBarColor.allCases, id: \.self) { color in
+                                    Button(action: {
+                                        settings.cpuColor = color
+                                    }) {
+                                        Circle()
+                                            .fill(color.swiftUIColor)
+                                            .frame(width: 16, height: 16)
+                                            .overlay(
+                                                Circle()
+                                                    .strokeBorder(Color.primary.opacity(settings.cpuColor == color ? 0.9 : 0.18), lineWidth: settings.cpuColor == color ? 2.0 : 0.8)
+                                            )
+                                            .scaleEffect(settings.cpuColor == color ? 1.15 : 1.0)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help(color.displayName)
+                                }
+                                Spacer()
+                            }
+                        }
+                        
+                        // High Contrast Graph Background Toggle
+                        Toggle(isOn: $settings.highContrastGraph) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("High Contrast Graph Background")
+                                    .font(.system(size: 11, weight: .medium))
+                                Text("Add a dark backdrop behind menu bar graphs for bright wallpapers")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .toggleStyle(.switch)
                         
                         Divider().opacity(0.15)
                         

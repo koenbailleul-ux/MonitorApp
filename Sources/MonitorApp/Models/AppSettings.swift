@@ -24,6 +24,60 @@ public enum AppearanceMode: String, CaseIterable, Sendable {
     }
 }
 
+public enum MenuBarColor: String, CaseIterable, Sendable {
+    case orange = "orange"
+    case blue = "blue"
+    case green = "green"
+    case purple = "purple"
+    case cyan = "cyan"
+    case red = "red"
+    case yellow = "yellow"
+    case monochrome = "monochrome"
+    
+    public var displayName: String {
+        switch self {
+        case .orange: return "Vibrant Orange (High Contrast)"
+        case .blue: return "Electric Blue"
+        case .green: return "Emerald Green"
+        case .purple: return "Purple"
+        case .cyan: return "Cyan"
+        case .red: return "Coral Red"
+        case .yellow: return "Amber Yellow"
+        case .monochrome: return "Monochrome (White)"
+        }
+    }
+    
+    public var shortName: String {
+        switch self {
+        case .orange: return "Orange"
+        case .blue: return "Blue"
+        case .green: return "Green"
+        case .purple: return "Purple"
+        case .cyan: return "Cyan"
+        case .red: return "Red"
+        case .yellow: return "Yellow"
+        case .monochrome: return "White"
+        }
+    }
+    
+    public var nsColor: NSColor {
+        switch self {
+        case .orange: return NSColor(red: 1.00, green: 0.55, blue: 0.05, alpha: 1.0)
+        case .blue: return NSColor(red: 0.30, green: 0.72, blue: 1.00, alpha: 1.0)
+        case .green: return NSColor(red: 0.20, green: 0.84, blue: 0.45, alpha: 1.0)
+        case .purple: return NSColor(red: 0.72, green: 0.45, blue: 1.00, alpha: 1.0)
+        case .cyan: return NSColor(red: 0.15, green: 0.85, blue: 0.95, alpha: 1.0)
+        case .red: return NSColor(red: 1.00, green: 0.33, blue: 0.33, alpha: 1.0)
+        case .yellow: return NSColor(red: 1.00, green: 0.82, blue: 0.10, alpha: 1.0)
+        case .monochrome: return NSColor(white: 0.96, alpha: 1.0)
+        }
+    }
+    
+    public var swiftUIColor: Color {
+        Color(nsColor: nsColor)
+    }
+}
+
 public enum MenuBarDisplayStyle: String, CaseIterable, Sendable {
     case text = "text"
     case bar = "bar"
@@ -73,6 +127,8 @@ public final class AppSettings: ObservableObject {
         static let memoryDisplayStyle = "memoryDisplayStyle"
         static let networkDisplayStyle = "networkDisplayStyle"
         static let enableHoverZoom = "enableHoverZoom"
+        static let cpuColor = "cpuColor"
+        static let highContrastGraph = "highContrastGraph"
     }
     
     @Published public var refreshInterval: Double {
@@ -145,6 +201,18 @@ public final class AppSettings: ObservableObject {
         }
     }
     
+    @Published public var cpuColor: MenuBarColor {
+        didSet {
+            UserDefaults.standard.set(cpuColor.rawValue, forKey: Keys.cpuColor)
+        }
+    }
+    
+    @Published public var highContrastGraph: Bool {
+        didSet {
+            UserDefaults.standard.set(highContrastGraph, forKey: Keys.highContrastGraph)
+        }
+    }
+    
     private init() {
         let defaults = UserDefaults.standard
         let interval = defaults.double(forKey: Keys.refreshInterval)
@@ -208,6 +276,19 @@ public final class AppSettings: ObservableObject {
             self.enableHoverZoom = defaults.bool(forKey: Keys.enableHoverZoom)
         } else {
             self.enableHoverZoom = true
+        }
+        
+        if let rawColor = defaults.string(forKey: Keys.cpuColor),
+           let color = MenuBarColor(rawValue: rawColor) {
+            self.cpuColor = color
+        } else {
+            self.cpuColor = .orange
+        }
+        
+        if defaults.object(forKey: Keys.highContrastGraph) != nil {
+            self.highContrastGraph = defaults.bool(forKey: Keys.highContrastGraph)
+        } else {
+            self.highContrastGraph = true
         }
     }
     

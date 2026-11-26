@@ -286,7 +286,23 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
         appearanceMenuItem.submenu = appearanceSubmenu
         menu.addItem(appearanceMenuItem)
         
-        // 4. Display Options Submenu
+        // 4. CPU Color Submenu
+        let colorMenuItem = NSMenuItem(title: "CPU Graph Color", action: nil, keyEquivalent: "")
+        colorMenuItem.image = NSImage(systemSymbolName: "paintpalette", accessibilityDescription: nil)
+        let colorSubmenu = NSMenu(title: "CPU Graph Color")
+        
+        let currentColor = AppSettings.shared.cpuColor
+        for color in MenuBarColor.allCases {
+            let item = NSMenuItem(title: color.displayName, action: #selector(didSelectCPUColor(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = color
+            item.state = (color == currentColor) ? .on : .off
+            colorSubmenu.addItem(item)
+        }
+        colorMenuItem.submenu = colorSubmenu
+        menu.addItem(colorMenuItem)
+        
+        // 5. Display Options Submenu
         let displayMenuItem = NSMenuItem(title: "Display Options", action: nil, keyEquivalent: "")
         displayMenuItem.image = NSImage(systemSymbolName: "gauge.with.needle", accessibilityDescription: nil)
         let displaySubmenu = NSMenu(title: "Display Options")
@@ -295,6 +311,11 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
         hoverZoomItem.target = self
         hoverZoomItem.state = AppSettings.shared.enableHoverZoom ? .on : .off
         displaySubmenu.addItem(hoverZoomItem)
+        
+        let contrastItem = NSMenuItem(title: "High Contrast Graph Background", action: #selector(toggleHighContrastGraph), keyEquivalent: "")
+        contrastItem.target = self
+        contrastItem.state = AppSettings.shared.highContrastGraph ? .on : .off
+        displaySubmenu.addItem(contrastItem)
         
         displaySubmenu.addItem(NSMenuItem.separator())
         
@@ -390,6 +411,17 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
     @objc private func didSelectAppearanceMode(_ sender: NSMenuItem) {
         guard let mode = sender.representedObject as? AppearanceMode else { return }
         AppSettings.shared.appearanceMode = mode
+    }
+    
+    @objc private func didSelectCPUColor(_ sender: NSMenuItem) {
+        guard let color = sender.representedObject as? MenuBarColor else { return }
+        AppSettings.shared.cpuColor = color
+        statusView.needsDisplay = true
+    }
+    
+    @objc private func toggleHighContrastGraph() {
+        AppSettings.shared.highContrastGraph.toggle()
+        statusView.needsDisplay = true
     }
     
     @objc private func toggleNetworkPercentage() {

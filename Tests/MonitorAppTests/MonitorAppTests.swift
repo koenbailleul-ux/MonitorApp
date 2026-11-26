@@ -59,4 +59,29 @@ final class MonitorAppTests: XCTestCase {
         XCTAssertEqual(cpu.history.count, 30)
         XCTAssertEqual(cpu.history.last, 75.5)
     }
+    
+    func testMenuBarColorAndHighContrastSettings() {
+        XCTAssertEqual(MenuBarColor.allCases.count, 8)
+        for color in MenuBarColor.allCases {
+            XCTAssertFalse(color.displayName.isEmpty)
+            XCTAssertFalse(color.shortName.isEmpty)
+        }
+        
+        let settings = AppSettings.shared
+        let prevColor = settings.cpuColor
+        let prevContrast = settings.highContrastGraph
+        
+        settings.cpuColor = .blue
+        XCTAssertEqual(settings.cpuColor, .blue)
+        settings.cpuColor = .orange
+        XCTAssertEqual(settings.cpuColor, .orange)
+        
+        settings.highContrastGraph = false
+        XCTAssertFalse(settings.highContrastGraph)
+        settings.highContrastGraph = true
+        XCTAssertTrue(settings.highContrastGraph)
+        
+        settings.cpuColor = prevColor
+        settings.highContrastGraph = prevContrast
+    }
 }
