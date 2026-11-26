@@ -44,12 +44,36 @@ mkdir -p "${RESOURCES_DIR}"
 
 # Collect swift sources
 SOURCES=$(find Sources/MonitorApp -name "*.swift")
+SDK_PATH=$(xcrun --show-sdk-path)
+TMP_DIR=$(mktemp -d /tmp/monitorapp_build.XXXXXX)
 
-echo "⚙️ Compiling Swift sources..."
+echo "⚙️ Compiling Swift sources (Universal 2: arm64 + x86_64)..."
+
+ARM64_BIN="${TMP_DIR}/${APP_NAME}_arm64"
+X86_BIN="${TMP_DIR}/${APP_NAME}_x86_64"
+
+# Compile Apple Silicon slice
+echo "  -> Compiling for Apple Silicon (arm64)..."
 swiftc -parse-as-library -O \
+    -sdk "${SDK_PATH}" \
+    -target arm64-apple-macosx14.0 \
     -module-cache-path "${MODULE_CACHE}" \
     ${SOURCES} \
-    -o "${MACOS_DIR}/${APP_NAME}"
+    -o "${ARM64_BIN}"
+
+# Compile Intel slice
+echo "  -> Compiling for Intel (x86_64)..."
+swiftc -parse-as-library -O \
+    -sdk "${SDK_PATH}" \
+    -target x86_64-apple-macosx14.0 \
+    -module-cache-path "${MODULE_CACHE}" \
+    ${SOURCES} \
+    -o "${X86_BIN}"
+
+# Combine into Universal binary
+echo "  -> Merging architectures with lipo..."
+lipo -create -output "${MACOS_DIR}/${APP_NAME}" "${ARM64_BIN}" "${X86_BIN}"
+rm -rf "${TMP_DIR}"
 
 # Copy Info.plist
 echo "📋 Creating Info.plist and PkgInfo..."

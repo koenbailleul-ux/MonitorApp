@@ -128,6 +128,17 @@ public final class SystemMonitorService: ObservableObject {
                 upHist.append(net.uploadBytesPerSecond)
                 if upHist.count > 30 { upHist.removeFirst() }
                 newNet.uploadHistory = upHist
+                
+                var bwHist = self.networkStats.bandwidthHistory
+                bwHist.append(net.bandwidthUsagePercentage)
+                if bwHist.count > 30 { bwHist.removeFirst() }
+                newNet.bandwidthHistory = bwHist
+                
+                var tpHist = self.networkStats.throughputHistory
+                tpHist.append(net.downloadBytesPerSecond + net.uploadBytesPerSecond)
+                if tpHist.count > 30 { tpHist.removeFirst() }
+                newNet.throughputHistory = tpHist
+                
                 self.networkStats = newNet
                 
                 if let procs = procs {

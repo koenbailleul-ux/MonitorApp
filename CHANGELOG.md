@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-11-26
+
+### Added
+- **Graphical Menu Bar Representations**:
+  - **Progress Bar Style**: Miniature horizontal progress bar with track and filled level indicator reflecting real-time load for CPU, Memory, and Network.
+  - **History Graph (Sparkline) Style**: Real-time waveform sparkline rendering recent 30-sample load curves with smooth gradient fills directly within the macOS menu bar.
+  - **Bar & Text Style**: Compact progress bar combined with numerical percentage/rate indicator.
+  - **Independent Metric Customization**: Choose a unified preset or customize CPU, Memory, and Network representation styles independently in Settings and the right-click menu.
+- **Hover Zoomed-In View (HUD)**:
+  - Non-activating, floating frosted-glass HUD appears beneath the hovered menu bar metric.
+  - **CPU Zoomed View**: Detailed 30-second load sparkline with grid lines, peak percentage, User/System/Idle breakdown, chip architecture, and per-core utilization bars.
+  - **Memory Zoomed View**: 30-second memory trend graph, pressure status badge, unified RAM usage, and multi-segment bar (Wired, Active, Compressed, Free).
+  - **Network Zoomed View**: Dual high-resolution sparklines for download and upload throughput, IP address, interface name, and session transfer totals.
+  - Quick toggle to enable/disable Hover Zoom in Settings and Context Menu.
+
+---
+
 ## [1.1.0] - 2026-11-21
 
 ### Added

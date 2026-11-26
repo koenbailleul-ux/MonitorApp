@@ -10,6 +10,96 @@ public struct SettingsDetailView: View {
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 12) {
+                // MARK: - Menu Bar Representation Card
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Menu Bar Representation", systemImage: "menubar.rectangle")
+                            .font(.system(size: 12, weight: .bold))
+                        
+                        // Preset / Master Display Style
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack {
+                                Text("Display Style")
+                                    .font(.system(size: 11, weight: .medium))
+                                Spacer()
+                                Text(settings.menuBarStyle.displayName)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            HStack(spacing: 3) {
+                                ForEach(MenuBarDisplayStyle.allCases, id: \.self) { style in
+                                    Button(action: {
+                                        settings.menuBarStyle = style
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: style.iconName)
+                                                .font(.system(size: 9.5))
+                                            Text(style.shortName)
+                                                .font(.system(size: 10.5, weight: settings.menuBarStyle == style ? .semibold : .regular))
+                                        }
+                                        .foregroundColor(settings.menuBarStyle == style ? .primary : .secondary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 5)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                                .fill(settings.menuBarStyle == style ? Color(nsColor: .controlAccentColor).opacity(0.22) : Color.clear)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.primary.opacity(0.06))
+                            )
+                        }
+                        
+                        // Individual Per-Metric Styles
+                        VStack(spacing: 6) {
+                            MetricStyleRow(
+                                title: "CPU Metric",
+                                icon: "cpu",
+                                tintColor: .blue,
+                                selection: $settings.cpuDisplayStyle
+                            )
+                            MetricStyleRow(
+                                title: "Memory Metric",
+                                icon: "memorychip",
+                                tintColor: .green,
+                                selection: $settings.memoryDisplayStyle
+                            )
+                            MetricStyleRow(
+                                title: "Network Metric",
+                                icon: "arrow.up.arrow.down",
+                                tintColor: .cyan,
+                                selection: $settings.networkDisplayStyle
+                            )
+                        }
+                        .padding(.top, 2)
+                        
+                        Divider().opacity(0.15)
+                        
+                        // Hover Zoomed View Toggle
+                        Toggle(isOn: $settings.enableHoverZoom) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "sparkle.magnifyingglass")
+                                        .foregroundColor(.accentColor)
+                                        .font(.system(size: 11))
+                                    Text("Show Zoomed View on Hover")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                Text("Display enlarged real-time sparkline graph and metrics when hovering over the menu bar")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .toggleStyle(.switch)
+                    }
+                }
+                
                 // MARK: - Preferences Card
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
@@ -173,7 +263,7 @@ public struct SettingsDetailView: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
-                        Text("v1.1.0")
+                        Text("v1.2.0")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
                     }
@@ -191,5 +281,50 @@ public struct SettingsDetailView: View {
     
     private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+}
+
+private struct MetricStyleRow: View {
+    let title: String
+    let icon: String
+    let tintColor: Color
+    @Binding var selection: MenuBarDisplayStyle
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(tintColor)
+                .frame(width: 14)
+            
+            Text(title)
+                .font(.system(size: 10.5, weight: .medium))
+            
+            Spacer()
+            
+            HStack(spacing: 2) {
+                ForEach(MenuBarDisplayStyle.allCases, id: \.self) { style in
+                    Button(action: {
+                        selection = style
+                    }) {
+                        Text(style.shortName)
+                            .font(.system(size: 9.5, weight: selection == style ? .semibold : .regular))
+                            .foregroundColor(selection == style ? .primary : .secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .fill(selection == style ? Color(nsColor: .controlAccentColor).opacity(0.20) : Color.clear)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(1.5)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(0.04))
+            )
+        }
     }
 }

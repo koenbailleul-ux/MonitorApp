@@ -12,8 +12,16 @@ A native, lightweight, and modern macOS menu bar application that displays real-
 
 - **Top Menu Bar Residency (`LSUIElement`)**:
   - Resides unobtrusively in the macOS top menu bar without cluttering the Dock.
-  - Displays real-time **CPU %**, **Memory %**, and **Network %** (or throughput speed) with clean SF symbols and native hover effects.
-  - **Direct Tab Activation**: Clicking on **CPU %**, **Memory %**, or **Network %** in the menu bar instantly opens the popup directly to that exact tab.
+  - **Graphical Representations**:
+    - **Text**: Real-time CPU %, Memory %, and Network throughput/percentage with clean SF symbols.
+    - **Progress Bar**: Miniature horizontal level meter displaying resource utilization.
+    - **History Graph**: Real-time sparkline graph showing 30-second load curves for CPU, Memory, and Network.
+    - **Bar & Text**: Dual representation combining miniature progress bars with numerical metrics.
+    - Configure globally or customize CPU, Memory, and Network representations individually.
+  - **Hover Zoomed-In View (HUD)**:
+    - Hovering over any metric in the menu bar smoothly opens an enlarged, floating frosted-glass preview HUD.
+    - Displays high-resolution historical sparkline charts, min/avg/peak loads, per-core activity, and detailed breakdown metrics without requiring a click.
+  - **Direct Tab Activation**: Clicking on **CPU**, **Memory**, or **Network** in the menu bar instantly opens the popup directly to that exact tab.
   - **Vertical Resizing & Size Memory**: The popup can be freely resized vertically (by dragging the bottom border or the visual bottom grabber handle). The chosen height is remembered in `UserDefaults` and restored every time you reopen the popup.
   - **Right-Click Context Menu**: Right-click (or Ctrl+click) anywhere on the status item to open a quick context menu to:
     - Change **Appearance**: Match System (Auto), Dark Mode, or Light Mode.

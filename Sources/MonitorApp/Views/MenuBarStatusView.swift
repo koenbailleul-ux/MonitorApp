@@ -4,6 +4,7 @@ import Combine
 public final class MenuBarStatusView: NSView {
     public var onSectionClicked: ((InspectorTab, NSRect) -> Void)?
     public var onRightClicked: (() -> Void)?
+    public var onSizeChanged: ((CGFloat) -> Void)?
     
     // Crucial for NSStatusBarButton coordinate matching
     public override var isFlipped: Bool { true }
@@ -53,7 +54,36 @@ public final class MenuBarStatusView: NSView {
             }
             .store(in: &cancellables)
         
+        // Subscribe to display style and setting changes
         AppSettings.shared.$showNetworkAsPercentage
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateLayout()
+            }
+            .store(in: &cancellables)
+        
+        AppSettings.shared.$menuBarStyle
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateLayout()
+            }
+            .store(in: &cancellables)
+        
+        AppSettings.shared.$cpuDisplayStyle
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateLayout()
+            }
+            .store(in: &cancellables)
+        
+        AppSettings.shared.$memoryDisplayStyle
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateLayout()
+            }
+            .store(in: &cancellables)
+        
+        AppSettings.shared.$networkDisplayStyle
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateLayout()
@@ -84,22 +114,27 @@ public final class MenuBarStatusView: NSView {
     }
     
     public func updateLayout() {
-        let cpuText = SystemMonitorService.shared.cpuPercentString
-        let memText = SystemMonitorService.shared.memoryPercentString
-        let netText = AppSettings.shared.showNetworkAsPercentage
-            ? SystemMonitorService.shared.networkPercentString
-            : SystemMonitorService.shared.networkRateString
-        
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
+        let monitor = SystemMonitorService.shared
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .semibold)
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        
+        let cpuText = monitor.cpuPercentString
+        let memText = monitor.memoryPercentString
+        let netText = AppSettings.shared.showNetworkAsPercentage
+            ? monitor.networkPercentString
+            : monitor.networkRateString
         
         let cpuTextWidth = (cpuText as NSString).size(withAttributes: attrs).width
         let memTextWidth = (memText as NSString).size(withAttributes: attrs).width
         let netTextWidth = (netText as NSString).size(withAttributes: attrs).width
         
-        let cpuW = max(56.0, ceil(cpuTextWidth + 26.0))
-        let memW = max(56.0, ceil(memTextWidth + 26.0))
-        let netW = max(58.0, ceil(netTextWidth + 26.0))
+        let cpuStyle = AppSettings.shared.cpuDisplayStyle
+        let memStyle = AppSettings.shared.memoryDisplayStyle
+        let netStyle = AppSettings.shared.networkDisplayStyle
+        
+        let cpuW = calculatePillWidth(for: cpuStyle, textWidth: cpuTextWidth)
+        let memW = calculatePillWidth(for: memStyle, textWidth: memTextWidth)
+        let netW = calculatePillWidth(for: netStyle, textWidth: netTextWidth)
         
         let pillH: CGFloat = 19.0
         let h = bounds.height > 0 ? bounds.height : 22.0
@@ -114,8 +149,25 @@ public final class MenuBarStatusView: NSView {
         let totalW = networkRect.maxX + leftMargin
         if frame.width != totalW {
             frame = NSRect(x: frame.origin.x, y: frame.origin.y, width: totalW, height: h)
+            onSizeChanged?(totalW)
         }
         needsDisplay = true
+    }
+    
+    private func calculatePillWidth(for style: MenuBarDisplayStyle, textWidth: CGFloat) -> CGFloat {
+        switch style {
+        case .text:
+            return max(54.0, ceil(textWidth + 24.0))
+        case .bar:
+            // Icon (11) + margin (5) + bar (30) + padding (8) = 54
+            return 54.0
+        case .barAndText:
+            // Icon (11) + bar (24) + spacing (4) + text + padding = ~78+
+            return ceil(textWidth + 48.0)
+        case .history:
+            // Icon (11) + margin (5) + mini sparkline (38) + padding (6) = 60
+            return 60.0
+        }
     }
     
     public override func draw(_ dirtyRect: NSRect) {
@@ -128,15 +180,6 @@ public final class MenuBarStatusView: NSView {
             ? monitor.networkPercentString
             : monitor.networkRateString
         
-        // Draw CPU Pill
-        drawPill(
-            rect: cpuRect,
-            iconName: "cpu",
-            text: cpuText,
-            tab: .cpu,
-            tintColor: NSColor.systemBlue
-        )
-        
         // Memory Pressure Color: green, yellow or red
         let memPressureColor: NSColor
         switch monitor.memoryStats.pressureStatus {
@@ -148,6 +191,18 @@ public final class MenuBarStatusView: NSView {
             memPressureColor = NSColor(red: 1.00, green: 0.30, blue: 0.30, alpha: 1.0)
         }
         
+        // Draw CPU Pill
+        drawPill(
+            rect: cpuRect,
+            iconName: "cpu",
+            text: cpuText,
+            tab: .cpu,
+            tintColor: NSColor.systemBlue,
+            style: AppSettings.shared.cpuDisplayStyle,
+            value: monitor.cpuStats.overallUsage,
+            history: monitor.cpuStats.history
+        )
+        
         // Draw Memory Pill
         drawPill(
             rect: memoryRect,
@@ -155,16 +210,25 @@ public final class MenuBarStatusView: NSView {
             text: memText,
             tab: .memory,
             tintColor: memPressureColor,
-            customTextColor: memPressureColor
+            customTextColor: memPressureColor,
+            style: AppSettings.shared.memoryDisplayStyle,
+            value: monitor.memoryStats.usedPercentage,
+            history: monitor.memoryStats.history
         )
         
         // Draw Network Pill
+        let netHistory = AppSettings.shared.showNetworkAsPercentage
+            ? monitor.networkStats.bandwidthHistory
+            : monitor.networkStats.throughputHistory
         drawPill(
             rect: networkRect,
             iconName: "arrow.up.arrow.down",
             text: netText,
             tab: .network,
-            tintColor: NSColor.systemCyan
+            tintColor: NSColor.systemCyan,
+            style: AppSettings.shared.networkDisplayStyle,
+            value: monitor.networkStats.bandwidthUsagePercentage,
+            history: netHistory
         )
     }
     
@@ -174,7 +238,10 @@ public final class MenuBarStatusView: NSView {
         text: String,
         tab: InspectorTab,
         tintColor: NSColor,
-        customTextColor: NSColor? = nil
+        customTextColor: NSColor? = nil,
+        style: MenuBarDisplayStyle,
+        value: Double,
+        history: [Double]
     ) {
         let isHovered = (hoveredSection == tab)
         let isActive = (activeSection == tab)
@@ -182,17 +249,22 @@ public final class MenuBarStatusView: NSView {
         // Pill background
         let path = NSBezierPath(roundedRect: rect, xRadius: 4.5, yRadius: 4.5)
         if isActive {
-            NSColor.controlAccentColor.withAlphaComponent(0.28).setFill()
+            NSColor.controlAccentColor.withAlphaComponent(0.30).setFill()
             path.fill()
         } else if isHovered {
-            NSColor.textColor.withAlphaComponent(0.12).setFill()
+            NSColor.textColor.withAlphaComponent(0.18).setFill()
             path.fill()
+            
+            // Faint subtle outline to enhance hover responsiveness
+            NSColor.textColor.withAlphaComponent(0.28).setStroke()
+            path.lineWidth = 1.0
+            path.stroke()
         }
         
         // Draw icon
-        let iconSize: CGFloat = 11.0
+        let iconSize: CGFloat = isHovered ? 11.5 : 11.0
         let iconColor = isActive ? NSColor.controlAccentColor : tintColor
-        let baseConfig = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .semibold)
+        let baseConfig = NSImage.SymbolConfiguration(pointSize: iconSize, weight: isHovered ? .bold : .semibold)
         let colorConfig = NSImage.SymbolConfiguration(paletteColors: [iconColor])
         let finalConfig = baseConfig.applying(colorConfig)
         
@@ -202,52 +274,163 @@ public final class MenuBarStatusView: NSView {
             icon.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1.0)
         }
         
-        // Draw text
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .semibold)
-        let textColor: NSColor = customTextColor ?? (isActive ? NSColor.labelColor : NSColor.labelColor.withAlphaComponent(0.9))
+        let contentX = rect.origin.x + 5.0 + iconSize + 3.5
+        let availableWidth = rect.maxX - contentX - 5.0
+        
+        switch style {
+        case .text:
+            drawTextOnly(text: text, rect: rect, startX: contentX, isActive: isActive, customTextColor: customTextColor)
+            
+        case .bar:
+            let barRect = NSRect(x: contentX, y: rect.origin.y + (rect.height - (isHovered ? 7.5 : 6.5)) / 2.0, width: availableWidth, height: isHovered ? 7.5 : 6.5)
+            drawProgressBar(rect: barRect, value: value, tintColor: tintColor, isHovered: isHovered)
+            
+        case .barAndText:
+            let barW: CGFloat = 20.0
+            let barRect = NSRect(x: contentX, y: rect.origin.y + (rect.height - 6.0) / 2.0, width: barW, height: 6.0)
+            drawProgressBar(rect: barRect, value: value, tintColor: tintColor, isHovered: isHovered)
+            
+            let textStartX = barRect.maxX + 4.0
+            drawTextOnly(text: text, rect: rect, startX: textStartX, isActive: isActive, customTextColor: customTextColor)
+            
+        case .history:
+            let graphH: CGFloat = isHovered ? 14.0 : 13.0
+            let graphRect = NSRect(x: contentX, y: rect.origin.y + (rect.height - graphH) / 2.0, width: availableWidth, height: graphH)
+            drawHistorySparkline(rect: graphRect, history: history, tintColor: tintColor, isHovered: isHovered, tab: tab)
+        }
+    }
+    
+    // MARK: - Mini Visual Elements
+    private func drawTextOnly(text: String, rect: NSRect, startX: CGFloat, isActive: Bool, customTextColor: NSColor?) {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .bold)
+        let textColor: NSColor = customTextColor ?? (isActive ? NSColor.labelColor : NSColor.labelColor.withAlphaComponent(0.95))
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: textColor
         ]
         
-        let textX = rect.origin.x + 5.0 + iconSize + 3.0
         let textSize = (text as NSString).size(withAttributes: attrs)
         let textY = rect.origin.y + (rect.height - textSize.height) / 2.0
-        let textRect = NSRect(x: textX, y: textY, width: textSize.width, height: textSize.height)
+        let textRect = NSRect(x: startX, y: textY, width: textSize.width, height: textSize.height)
         
         (text as NSString).draw(in: textRect, withAttributes: attrs)
     }
     
+    private func drawProgressBar(rect: NSRect, value: Double, tintColor: NSColor, isHovered: Bool) {
+        // Track
+        let trackPath = NSBezierPath(roundedRect: rect, xRadius: 3.0, yRadius: 3.0)
+        NSColor.textColor.withAlphaComponent(0.14).setFill()
+        trackPath.fill()
+        
+        // Fill
+        let clamped = max(0.0, min(100.0, value))
+        let fillFraction = CGFloat(clamped / 100.0)
+        let fillW = max(3.0, rect.width * fillFraction)
+        let fillRect = NSRect(x: rect.origin.x, y: rect.origin.y, width: fillW, height: rect.height)
+        let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 3.0, yRadius: 3.0)
+        
+        let color = isHovered ? tintColor : tintColor.withAlphaComponent(0.90)
+        color.setFill()
+        fillPath.fill()
+    }
+    
+    private func drawHistorySparkline(rect: NSRect, history: [Double], tintColor: NSColor, isHovered: Bool, tab: InspectorTab) {
+        // Background container box
+        let boxPath = NSBezierPath(roundedRect: rect, xRadius: 2.5, yRadius: 2.5)
+        NSColor.textColor.withAlphaComponent(0.06).setFill()
+        boxPath.fill()
+        NSColor.textColor.withAlphaComponent(0.12).setStroke()
+        boxPath.lineWidth = 0.5
+        boxPath.stroke()
+        
+        guard history.count >= 2 else { return }
+        
+        let count = history.count
+        let stepX = rect.width / CGFloat(max(count - 1, 1))
+        
+        let maxVal: Double = (tab == .network && !AppSettings.shared.showNetworkAsPercentage)
+            ? max(history.max() ?? 1024.0, 1024.0)
+            : 100.0
+        
+        let topY = rect.minY + 1.0
+        let bottomY = rect.maxY - 1.0
+        let h = max(1.0, bottomY - topY)
+        
+        var points: [NSPoint] = []
+        for (i, val) in history.enumerated() {
+            let px = rect.minX + CGFloat(i) * stepX
+            let clamped = max(0.0, min(val, maxVal))
+            let py = bottomY - (CGFloat(clamped / maxVal) * h)
+            points.append(NSPoint(x: px, y: py))
+        }
+        
+        // Area Gradient Fill under curve
+        let fillPath = NSBezierPath()
+        fillPath.move(to: NSPoint(x: points[0].x, y: bottomY))
+        for pt in points {
+            fillPath.line(to: pt)
+        }
+        fillPath.line(to: NSPoint(x: points.last!.x, y: bottomY))
+        fillPath.close()
+        
+        NSGraphicsContext.saveGraphicsState()
+        fillPath.addClip()
+        let gradient = NSGradient(
+            starting: tintColor.withAlphaComponent(isHovered ? 0.45 : 0.30),
+            ending: tintColor.withAlphaComponent(0.04)
+        )
+        gradient?.draw(in: rect, angle: 90.0) // 90 degrees in flipped coordinates is top to bottom
+        NSGraphicsContext.restoreGraphicsState()
+        
+        // Stroked line along top
+        let linePath = NSBezierPath()
+        linePath.move(to: points[0])
+        for i in 1..<points.count {
+            linePath.line(to: points[i])
+        }
+        linePath.lineWidth = isHovered ? 1.4 : 1.1
+        linePath.lineCapStyle = .round
+        linePath.lineJoinStyle = .round
+        tintColor.setStroke()
+        linePath.stroke()
+    }
+    
     // MARK: - Coordinate Helper
-    // NSStatusBarWindow has an unusual coordinate space; using screen-space mouse location
-    // relative to our own screen rect is more reliable than event.locationInWindow conversion.
     private func localX(from event: NSEvent) -> CGFloat {
-        // Convert the view's own frame to screen coordinates
         guard let window = self.window else {
-            // Fallback: use event location converted through view hierarchy
             return convert(event.locationInWindow, from: nil).x
         }
         let viewScreenRect = window.convertToScreen(convert(bounds, to: nil))
         let mouseScreenX = NSEvent.mouseLocation.x
-        // Clamp to [0, width] so edge clicks still register
         return max(0, min(bounds.width, mouseScreenX - viewScreenRect.origin.x))
     }
 
-    // MARK: - Mouse Events (Full-Column Responsive Hit-Testing)
+    // MARK: - Mouse Events & Hover Zoom
     public override func mouseMoved(with event: NSEvent) {
         let x = localX(from: event)
         let previous = hoveredSection
+        let newSection: InspectorTab
+        let targetRect: NSRect
         
         if x < memoryRect.minX {
-            hoveredSection = .cpu
+            newSection = .cpu
+            targetRect = cpuRect
         } else if x < networkRect.minX {
-            hoveredSection = .memory
+            newSection = .memory
+            targetRect = memoryRect
         } else {
-            hoveredSection = .network
+            newSection = .network
+            targetRect = networkRect
         }
         
+        hoveredSection = newSection
         if hoveredSection != previous {
             needsDisplay = true
+        }
+        
+        if let window = self.window {
+            let screenRect = window.convertToScreen(convert(targetRect, to: nil))
+            MenuBarHoverManager.shared.show(for: newSection, screenRect: screenRect)
         }
     }
     
@@ -256,18 +439,18 @@ public final class MenuBarStatusView: NSView {
             hoveredSection = nil
             needsDisplay = true
         }
+        MenuBarHoverManager.shared.scheduleHide(delay: 0.15)
     }
     
     public override func mouseDown(with event: NSEvent) {
-        // Control + Left Click behaves as Right Click on macOS
+        MenuBarHoverManager.shared.hide(immediate: true)
+        
         if event.modifierFlags.contains(.control) {
             onRightClicked?()
             return
         }
         
         let x = localX(from: event)
-        
-        // Full column hit testing (zero dead zones or gaps)
         if x < memoryRect.minX {
             onSectionClicked?(.cpu, cpuRect)
         } else if x < networkRect.minX {
@@ -278,6 +461,7 @@ public final class MenuBarStatusView: NSView {
     }
     
     public override func rightMouseDown(with event: NSEvent) {
+        MenuBarHoverManager.shared.hide(immediate: true)
         onRightClicked?()
     }
 }

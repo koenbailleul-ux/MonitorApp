@@ -173,9 +173,22 @@ public struct CPUDetailView: View {
                         
                         // 4. Standard Cores (Fallback for Intel or non-heterogeneous chips)
                         if !standardCores.isEmpty {
-                            LazyVGrid(columns: columns, spacing: 8) {
-                                ForEach(standardCores) { core in
-                                    CoreMeterCard(core: core)
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "cpu")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(CoreType.standard.color)
+                                    Text("Standard Cores (\(standardCores.count))")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(CoreType.standard.color)
+                                    Spacer()
+                                }
+                                .padding(.top, (superCores.isEmpty && performanceCores.isEmpty && efficiencyCores.isEmpty) ? 2 : 4)
+                                
+                                LazyVGrid(columns: columns, spacing: 8) {
+                                    ForEach(standardCores) { core in
+                                        CoreMeterCard(core: core)
+                                    }
                                 }
                             }
                         }

@@ -14,7 +14,7 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
     private var localEventMonitor: Any?
     
     @Published public var currentTab: InspectorTab = .cpu
-    private var isPanelShown: Bool = false
+    public private(set) var isPanelShown: Bool = false
     private var pinnedTopY: CGFloat = 0.0
     private var panelContentInstalled: Bool = false
     
@@ -43,8 +43,13 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
             self?.showContextMenu()
         }
         
+        statusView.onSizeChanged = { [weak self] newWidth in
+            self?.statusItem.length = newWidth
+        }
+        
         button.addSubview(statusView)
-        statusItem.length = initialWidth
+        statusView.updateLayout()
+        statusItem.length = statusView.frame.width
     }
     
     private func setupPanel() {
@@ -84,6 +89,7 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
     }
     
     public func handleSectionClicked(tab: InspectorTab, rect: NSRect) {
+        MenuBarHoverManager.shared.hide(immediate: true)
         if isPanelShown {
             if currentTab == tab {
                 closePanel()
@@ -233,6 +239,7 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
     
     // MARK: - Context Menu (Right-Click)
     public func showContextMenu() {
+        MenuBarHoverManager.shared.hide(immediate: true)
         closePanel()
         
         let menu = NSMenu(title: "MonitorApp Menu")
@@ -240,13 +247,30 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
         self.contextMenu = menu
         
         // 1. Header Item
-        let headerItem = NSMenuItem(title: "MonitorApp 1.1.0", action: nil, keyEquivalent: "")
+        let headerItem = NSMenuItem(title: "MonitorApp 1.2.0", action: nil, keyEquivalent: "")
         headerItem.isEnabled = false
         menu.addItem(headerItem)
         
         menu.addItem(NSMenuItem.separator())
         
-        // 2. Appearance Submenu
+        // 2. Menu Bar Representation Submenu
+        let styleMenuItem = NSMenuItem(title: "Menu Bar Style", action: nil, keyEquivalent: "")
+        styleMenuItem.image = NSImage(systemSymbolName: "menubar.rectangle", accessibilityDescription: nil)
+        let styleSubmenu = NSMenu(title: "Menu Bar Style")
+        
+        let currentStyle = AppSettings.shared.menuBarStyle
+        for style in MenuBarDisplayStyle.allCases {
+            let item = NSMenuItem(title: style.displayName, action: #selector(didSelectMenuBarStyle(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = style
+            item.image = NSImage(systemSymbolName: style.iconName, accessibilityDescription: nil)
+            item.state = (style == currentStyle) ? .on : .off
+            styleSubmenu.addItem(item)
+        }
+        styleMenuItem.submenu = styleSubmenu
+        menu.addItem(styleMenuItem)
+        
+        // 3. Appearance Submenu
         let appearanceMenuItem = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
         appearanceMenuItem.image = NSImage(systemSymbolName: "circle.lefthalf.filled", accessibilityDescription: nil)
         let appearanceSubmenu = NSMenu(title: "Appearance")
@@ -262,10 +286,17 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
         appearanceMenuItem.submenu = appearanceSubmenu
         menu.addItem(appearanceMenuItem)
         
-        // 3. Display Options Submenu
+        // 4. Display Options Submenu
         let displayMenuItem = NSMenuItem(title: "Display Options", action: nil, keyEquivalent: "")
         displayMenuItem.image = NSImage(systemSymbolName: "gauge.with.needle", accessibilityDescription: nil)
         let displaySubmenu = NSMenu(title: "Display Options")
+        
+        let hoverZoomItem = NSMenuItem(title: "Show Zoomed View on Hover", action: #selector(toggleHoverZoom), keyEquivalent: "")
+        hoverZoomItem.target = self
+        hoverZoomItem.state = AppSettings.shared.enableHoverZoom ? .on : .off
+        displaySubmenu.addItem(hoverZoomItem)
+        
+        displaySubmenu.addItem(NSMenuItem.separator())
         
         let netPercentItem = NSMenuItem(title: "Show Network as Percentage", action: #selector(toggleNetworkPercentage), keyEquivalent: "")
         netPercentItem.target = self
@@ -343,6 +374,19 @@ public final class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate, N
     }
     
     // MARK: - Menu Actions
+    @objc private func didSelectMenuBarStyle(_ sender: NSMenuItem) {
+        guard let style = sender.representedObject as? MenuBarDisplayStyle else { return }
+        AppSettings.shared.menuBarStyle = style
+        statusView.updateLayout()
+    }
+    
+    @objc private func toggleHoverZoom() {
+        AppSettings.shared.enableHoverZoom.toggle()
+        if !AppSettings.shared.enableHoverZoom {
+            MenuBarHoverManager.shared.hide(immediate: true)
+        }
+    }
+    
     @objc private func didSelectAppearanceMode(_ sender: NSMenuItem) {
         guard let mode = sender.representedObject as? AppearanceMode else { return }
         AppSettings.shared.appearanceMode = mode

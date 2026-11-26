@@ -83,6 +83,9 @@ public struct CPUStats: Sendable {
     public var efficiencyCount: Int {
         cores.filter { $0.type == .efficiency }.count
     }
+    public var standardCount: Int {
+        cores.filter { $0.type == .standard }.count
+    }
 }
 
 // MARK: - Memory Pressure Status
@@ -152,6 +155,8 @@ public struct NetworkStats: Sendable {
     
     public var downloadHistory: [Double] = Array(repeating: 0.0, count: 30)
     public var uploadHistory: [Double] = Array(repeating: 0.0, count: 30)
+    public var bandwidthHistory: [Double] = Array(repeating: 0.0, count: 30)
+    public var throughputHistory: [Double] = Array(repeating: 0.0, count: 30)
 }
 
 // MARK: - Process Item
